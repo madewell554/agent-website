@@ -21,7 +21,6 @@ const MODEL = "claude-sonnet-4-6";
 const MAX_AGENT_STEPS = 8; // hard cap so the agent can't loop forever
 
 // In-memory conversation store, keyed by a simple session id.
-// Swap this for Redis/Postgres for real persistence.
 const sessions = new Map();
 
 app.post("/api/chat", async (req, res) => {
@@ -38,7 +37,7 @@ app.post("/api/chat", async (req, res) => {
 
   try {
     const { finalText, trace } = await runAgentLoop(history);
-    res.json({ reply: finalText, trace }); // trace = which tools it used, for the UI to show its "thinking"
+    res.json({ reply: finalText, trace });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "agent failed", detail: err.message });
@@ -58,20 +57,37 @@ async function runAgentLoop(history) {
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: `You are an autonomous web agent. You can use tools to accomplish
-the user's goal. Think step by step. Only stop calling tools once you have
-enough information to give a complete, correct final answer.`,
+      system: `You are the virtual receptionist for Culy Contracting, an
+excavation company offering land clearing & grading, foundation/basement
+digging, septic & utility trenching, and general excavation work.
+
+Hours: Monday-Friday, 7:00am-5:00pm. Closed weekends unless a job is
+already in progress.
+
+Your job:
+- Answer questions about services, hours, and general process in a friendly,
+  professional tone -- like a real front-desk person, not a generic chatbot.
+- Use the search_notes tool for specific FAQ answers (pricing policy, service
+  area, what to expect, etc.) before guessing.
+- If someone wants a quote or wants to book a job, use the capture_lead tool
+  to collect their name, phone number, and a short description of the job.
+  Always confirm back to them what you captured, and tell them someone from
+  the office will call them back -- you cannot give firm prices or promise
+  specific dates yourself.
+- If you don't know something (exact pricing, availability on a specific
+  date, technical engineering questions), say so honestly and offer to take
+  their info instead of guessing.
+- Keep answers short and conversational, the way a real receptionist would
+  talk on the phone -- not long paragraphs.`,
       tools,
       messages: history,
     });
 
-    // Save the model's turn (may include text + tool_use blocks)
     history.push({ role: "assistant", content: response.content });
 
     const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
 
     if (toolUseBlocks.length === 0) {
-      // No tool calls -> model gave its final answer
       const finalText = response.content
         .filter((b) => b.type === "text")
         .map((b) => b.text)
@@ -79,7 +95,6 @@ enough information to give a complete, correct final answer.`,
       return { finalText, trace };
     }
 
-    // Execute every requested tool call, return results to the model
     const toolResults = [];
     for (const block of toolUseBlocks) {
       trace.push({ tool: block.name, input: block.input });
@@ -95,7 +110,7 @@ enough information to give a complete, correct final answer.`,
   }
 
   return {
-    finalText: "I hit my step limit before finishing — try narrowing the request.",
+    finalText: "I hit my step limit before finishing -- try narrowing the request.",
     trace,
   };
 }
