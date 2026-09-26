@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Agent Website</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; background: #0f1115; color: #e8e8e8; }
+  #log { border: 1px solid #333; border-radius: 8px; padding: 16px; min-height: 300px; margin-bottom: 12px; }
+  .msg { margin: 10px 0; white-space: pre-wrap; }
+  .user { color: #7dd3fc; }
+  .agent { color: #86efac; }
+  .trace { color: #999; font-size: 0.85em; margin: 4px 0 10px 0; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1d23; color: #fff; }
+  button { padding: 10px 16px; border-radius: 6px; border: none; background: #4f46e5; color: white; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h2>Autonomous Agent Website</h2>
+  <p style="color:#999">Try: "What's the weather in Austin?" or "Search notes for refund policy" or "What's 84 * 12, then tell me the weather in Tokyo"</p>
+  <div id="log"></div>
+  <form id="form">
+    <input id="input" placeholder="Ask the agent something..." autocomplete="off" />
+    <button type="submit">Send</button>
+  </form>
+
+<script>
+const log = document.getElementById("log");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+const sessionId = crypto.randomUUID();
+
+function addMsg(text, cls) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function addTrace(trace) {
+  if (!trace?.length) return;
+  const div = document.createElement("div");
+  div.className = "trace";
+  div.textContent = "🔧 used tools: " + trace.map(t => t.tool).join(" → ");
+  log.appendChild(div);
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if (!message) return;
+  addMsg("You: " + message, "user");
+  input.value = "";
+
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, message }),
+  });
+  const data = await res.json();
+
+  if (data.error) {
+    addMsg("Error: " + data.error, "agent");
+    return;
+  }
+  addTrace(data.trace);
+  addMsg("Agent: " + data.reply, "agent");
+});
+</script>
+</body>
+</html>
