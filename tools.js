@@ -85,12 +85,12 @@ export const tools = [
 
 // Business knowledge base for search_notes.
 const NOTES = [
-  { id: 1, text: "We serve [YOUR SERVICE AREA / COUNTIES / RADIUS FROM TOWN]." },
+  { id: 1, text: "We serve [randolph county and places with in a 2 hour radius]." },
   { id: 2, text: "We offer free on-site estimates for jobs over a certain size; smaller jobs get a phone estimate." },
   { id: 3, text: "A typical basement dig takes 2-4 days depending on soil conditions and size." },
   { id: 4, text: "We require a call to 811 (Call Before You Dig) before starting any job to mark utility lines." },
   { id: 5, text: "We accept cash, check, and card. A deposit is required to schedule larger jobs." },
-  { id: 6, text: "Emergency or urgent digging requests can be called in directly at [YOUR PHONE NUMBER]." },
+  { id: 6, text: "Emergency or urgent digging requests can be called in directly at [765-584-8509]." },
   { id: 7, text: "We are licensed and insured for residential and commercial excavation work." },
 ];
 
