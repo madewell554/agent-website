@@ -1,6 +1,5 @@
 // tools.js
 import twilio from "twilio";
-import { Resend } from "resend";
 
 export const tools = [
   {
@@ -36,15 +35,15 @@ export const tools = [
   },
 ];
 
-// ---- Who gets notified for each type of job ----
-// ✏️ EDIT THIS tomorrow with real names/numbers/emails.
+// ---- Who gets texted for each type of job ----
+// ✏️ EDIT THIS tomorrow with real names/numbers.
 const CONTACT_ROUTING = {
-  emergency: { name: "[EMERGENCY CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "emergency@example.com" },
-  utilities: { name: "[UTILITIES CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "utilities@example.com" },
-  protective_coatings: { name: "[COATINGS CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "coatings@example.com" },
-  flow_control: { name: "[FLOW CONTROL CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "flowcontrol@example.com" },
-  vac_truck_cctv: { name: "[VAC/CCTV CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "vaccctv@example.com" },
-  general: { name: "[GENERAL CONTACT NAME]", phone: "+1XXXXXXXXXX", email: "office@example.com" },
+  emergency: { name: "[EMERGENCY CONTACT NAME]", phone: "+1XXXXXXXXXX" },
+  utilities: { name: "[UTILITIES CONTACT NAME]", phone: "+1XXXXXXXXXX" },
+  protective_coatings: { name: "[COATINGS CONTACT NAME]", phone: "+1XXXXXXXXXX" },
+  flow_control: { name: "[FLOW CONTROL CONTACT NAME]", phone: "+1XXXXXXXXXX" },
+  vac_truck_cctv: { name: "[VAC/CCTV CONTACT NAME]", phone: "+1XXXXXXXXXX" },
+  general: { name: "[GENERAL CONTACT NAME]", phone: "+1XXXXXXXXXX" },
 };
 
 const NOTES = [
@@ -63,49 +62,30 @@ const NOTES = [
 
 const leads = [];
 
-// Twilio + Resend clients (only created if the keys exist, so search_notes
-// etc. still work locally even before you've filled these in)
 const twilioClient =
   process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
     ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
     : null;
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function notifyContact(contact, lead) {
   const message = `New lead (${lead.job_category}):\nName: ${lead.name}\nPhone: ${lead.phone}\nJob: ${lead.job_description}`;
 
-  const results = { sms: null, email: null };
-
-  if (twilioClient && process.env.TWILIO_PHONE_NUMBER) {
-    try {
-      await twilioClient.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: contact.phone,
-      });
-      results.sms = "sent";
-    } catch (err) {
-      console.error("SMS failed:", err.message);
-      results.sms = "failed";
-    }
+  if (!twilioClient || !process.env.TWILIO_PHONE_NUMBER) {
+    console.log("Twilio not configured yet -- lead only logged:", message);
+    return { sms: "not_configured" };
   }
 
-  if (resend) {
-    try {
-      await resend.emails.send({
-        from: "leads@yourdomain.com", // ✏️ EDIT THIS once you verify a domain in Resend
-        to: contact.email,
-        subject: `New Culy Contracting lead — ${lead.job_category}`,
-        text: message,
-      });
-      results.email = "sent";
-    } catch (err) {
-      console.error("Email failed:", err.message);
-      results.email = "failed";
-    }
+  try {
+    await twilioClient.messages.create({
+      body: message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: contact.phone,
+    });
+    return { sms: "sent" };
+  } catch (err) {
+    console.error("SMS failed:", err.message);
+    return { sms: "failed" };
   }
-
-  return results;
 }
 
 export async function executeTool(name, input) {
